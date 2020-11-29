@@ -1,0 +1,17 @@
+--find-links https://download.pytorch.org/whl/torch_stable.html
+
+GoogleNews==1.5.1
+jupyter==1.0.0
+matplotlib==3.2.1
+newspaper3k==0.2.8
+nltk==3.5
+numpy==1.18.4
+pandas==1.0.3
+requests==2.23.0
+scikit-learn==0.23.2
+scipy==1.5.4
+seaborn==0.10.1
+torch==1.7.0+cu101
+tqdm==4.45.0
+transformers==3.3.1
+wordcloud==1.8.1
