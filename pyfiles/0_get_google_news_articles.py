@@ -40,12 +40,11 @@ def get_news(query: str, pages: int=35) -> List[Dict[str, Any]]:
     googlenews = GoogleNews(start='01/01/2010',end='01/01/2015')
     googlenews.search(query)
     news = []
-    for page in (t := tqdm(range(pages), leave=False)):
+    for page in tqdm(range(pages), leave=False):
         googlenews.get_page(page)
         news += googlenews.results()
         
     return news
-    
     
 def get_article(news_item: Dict[str, Any], save_path: str) -> None:
     """
