@@ -303,11 +303,6 @@ def generate_crime_data(year_df: pd.DataFrame, year: int, save_path: str, window
         If to incorporate embeddings in the data.
     """
     
-    selected_crimes = crime_types[crime_types['OFNS_DESC'].isin(['ROBBERY',
-                                           'BURGLARY',
-                                           'FELONY ASSAULT',
-                                           'GRAND LARCENY',])]['KY_CD'].tolist()
-    
     for crime in tqdm(selected_crimes, leave=False):
         crime_df = year_df[year_df[OFFENCE_CODE] == crime]
         crime_type = crime_types[crime_types[OFFENCE_CODE] == crime][OFFENCE_DESC].iloc[0].replace('/', '_')
