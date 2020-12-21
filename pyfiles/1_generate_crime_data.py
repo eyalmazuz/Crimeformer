@@ -1,6 +1,7 @@
 import os
 import argparse
 import math
+import json
 import dateutil.parser
 from typing import List, Dict, Tuple
 
@@ -16,8 +17,9 @@ AREA_COLUMN = 'ADDR_PCT_CD'
 DATE_COLUMN = 'CMPLNT_FR_DT'
 OFFENCE_CODE = 'KY_CD'
 OFFENCE_DESC = 'OFNS_DESC'
+CB = 'BORO_NM'
 
-LOAD_COLUMNS = [AREA_COLUMN, DATE_COLUMN, OFFENCE_CODE, OFFENCE_DESC]
+LOAD_COLUMNS = [AREA_COLUMN, DATE_COLUMN, OFFENCE_CODE, OFFENCE_DESC, CB]
 LOWEST_DATE = dateutil.parser.parse('1/1/2000').date()
 
 crime_types = pd.read_csv('../data/csvs/Crime_Types.csv')
@@ -26,13 +28,10 @@ crime_types = crime_types[~crime_types[OFFENCE_DESC].isnull()]
 selected_crimes = crime_types[crime_types['OFNS_DESC'].isin(['ROBBERY',
                                            'BURGLARY',
                                            'FELONY ASSAULT',
-                                           'GRAND LARCENY',
-                                           'RAPE',
-                                           'DANGEROUS DRUGS',
-                                           'MURDER & NON-NEGL. MANSLAUGHTER',
-                                           'KIDNAPPING',
-                                           'DANGEROUS WEAPONS',
-                                           'CRIMINAL TRESPASS'])]['KY_CD'].tolist()
+                                           'GRAND LARCENY',])]['KY_CD'].tolist()
+
+
+embedding_dict = None
 
 def arg_parse():
     parser = argparse.ArgumentParser()
@@ -40,6 +39,7 @@ def arg_parse():
     parser.add_argument('--save_path', type=str, help='Path to save the npy files.')
     parser.add_argument('--window_size', type=int, default=5, help='Size of the window.')
     parser.add_argument('--data_type', type=str, choices=['time_series', 'regular'], help='Type of the training data to generate.')
+    parser.add_argument('--use_embedding', type=bool, choices=[True, False], help='If to including embedding in the data.')
     
 
     return parser.parse_args()
@@ -67,7 +67,7 @@ def date_from_str(date: str):
         return np.nan
     return date
 
-def generate_test_data(df: pd.DataFrame, start_date, end_date, window=5, data_type='regular') -> TestData:
+def generate_test_data(df: pd.DataFrame, start_date, end_date, window=5, data_type='regular', use_embedding: bool=False) -> TestData:
     """
     Generates trainning data for each month in the test set.
     Each month contains all the training data for all precints.
@@ -89,6 +89,9 @@ def generate_test_data(df: pd.DataFrame, start_date, end_date, window=5, data_ty
     data_type: str
         String representing the type of data to generate.
 
+    use_embedding: bool
+        If to incorporate embeddings in the data.
+
 
     Returns
     -------
@@ -107,6 +110,8 @@ def generate_test_data(df: pd.DataFrame, start_date, end_date, window=5, data_ty
         area_df = area_df.sort_values(DATE_COLUMN, ascending=True)
         crime_dates = area_df[DATE_COLUMN].unique()
 
+        borough = area_df[CB].unique().tolist()[0].lower()
+
         dates = pd.date_range(start_date, end_date, freq='d')
         has_crime = [1 if date in crime_dates else 0 for date in dates]
         area_crime_df = pd.DataFrame({'date': dates.date,
@@ -122,23 +127,30 @@ def generate_test_data(df: pd.DataFrame, start_date, end_date, window=5, data_ty
             month_df = area_crime_df[area_crime_df['month'] == month]
             x = []
             y = []
-            for i in range(window, month_df.shape[0]):
+            for i in range(window, area_crime_df.shape[0]):
                 if data_type == 'regular':
-                    x.append(month_df[i - window : i][columns].tolist() + month_df['area'].unique().tolist())
+                    instance = np.array(month_df[i - window : i][columns].tolist() + month_df['area'].unique().tolist())
+                    if use_embedding:
+                        instance = np.hstack([instance, embedding_dict[borough]])
                 else:
-                    x.append(month_df[i - window : i][columns].values)
+                    instance = month_df[i - window : i][columns].values
+                    if use_embedding:
+                        embs = np.array([embedding_dict[borough]] * window)
+                        instance = np.hstack([instance, embs]) 
+                        
+                x.append(instance)
                 y.append(month_df.iloc[i]['has_crime'])
-            
-            data[month]['x'].append(np.array(x))
+
+            data[month]['x'].append(x)
             data[month]['y'].append(y)
         
     for month in data:
         data[month]['x'] = np.vstack(data[month]['x'])
-        data[month]['y'] = np.vstack(data[month]['y'])
+        data[month]['y'] = np.hstack(data[month]['y'])
 
     return data
 
-def generate_train_data(df: pd.DataFrame, start_date, end_date, window=5, data_type='regular') -> Data:
+def generate_train_data(df: pd.DataFrame, start_date, end_date, window=5, data_type='regular', use_embedding: bool=True) -> Data:
     """
     Generates trainning data for each month in the test set.
     Each month contains all the training data for all precints.
@@ -160,6 +172,9 @@ def generate_train_data(df: pd.DataFrame, start_date, end_date, window=5, data_t
     data_type: str
         String representing the type of data to generate.
 
+    use_embedding: bool
+        If to incorporate embeddings in the data.
+
     Returns
     -------
     data: Data
@@ -171,14 +186,16 @@ def generate_train_data(df: pd.DataFrame, start_date, end_date, window=5, data_t
     else:
         columns = ['has_crime', 'area']
 
-    train = {'x': [], 'y': []}
+    data = {'x': [], 'y': []}
     
     for area in df[AREA_COLUMN].unique():
         
         area_df = df[df[AREA_COLUMN] == area]
         area_df = area_df.sort_values(DATE_COLUMN, ascending=True)
         crime_dates = area_df[DATE_COLUMN].unique()
-        
+
+        borough = area_df[CB].unique().tolist()[0].lower()
+
         dates = pd.date_range(start_date, end_date, freq='d')
         has_crime = [1 if date in crime_dates else 0 for date in dates]
         area_crime_df = pd.DataFrame({'date': dates.date,
@@ -190,20 +207,28 @@ def generate_train_data(df: pd.DataFrame, start_date, end_date, window=5, data_t
 
         for i in range(window, area_crime_df.shape[0]):
             if data_type == 'regular':
-                    x.append(np.array(area_crime_df[i - window : i][columns].tolist() + area_crime_df['area'].unique().tolist()))
+                instance = np.array(area_crime_df[i - window : i][columns].tolist() + area_crime_df['area'].unique().tolist())
+                if use_embedding:
+                    instance = np.hstack([instance, embedding_dict[borough]])
             else:
-                x.append(area_crime_df[i - window : i][columns].values)
+                instance = area_crime_df[i - window : i][columns].values
+                if use_embedding:
+                    embs = np.array([embedding_dict[borough]] * window)
+                    instance = np.hstack([instance, embs]) 
+            
+                
+            x.append(instance)
             y.append(area_crime_df.iloc[i]['has_crime'])
         
-        train['x'].append(np.vstack(x))
-        train['y'].append(y)
+        data['x'].append(x)
+        data['y'].append(np.array(y))
         
-    train['x'] = np.vstack(train['x'])
-    train['y'] = np.vstack(train['y'])
+    data['x'] = np.vstack(data['x'])
+    data['y'] = np.hstack(data['y'])
 
-    return train
+    return data
 
-def generate_area_data(year_df: pd.DataFrame, year: int, save_path: str, window_size: int=5, data_type: str='regular') -> None:
+def generate_area_data(year_df: pd.DataFrame, year: int, save_path: str, window_size: int=5, data_type: str='regular', use_embedding: bool=False) -> None:
     
     """
     Generates data for a specific area.
@@ -225,25 +250,24 @@ def generate_area_data(year_df: pd.DataFrame, year: int, save_path: str, window_
 
     data_type: str
         String representing the type of data to generate.
+
+    use_embedding: bool
+        If to incorporate embeddings in the data.
     """
     train_date = dateutil.parser.parse(f'1/1/{year}').date()
-    val_date = dateutil.parser.parse(f'6/1/{year}').date()
-    test_date = dateutil.parser.parse(f'7/1/{year}').date()
+    test_date = dateutil.parser.parse(f'8/1/{year}').date()
     end_date = dateutil.parser.parse(f'12/31/{year}').date()
 
-    train_df = year_df[(year_df[DATE_COLUMN] >= train_date) & (year_df[DATE_COLUMN] < val_date)]
-    val_df = year_df[(year_df[DATE_COLUMN] >= val_date) & (year_df[DATE_COLUMN] < test_date)]
+    train_df = year_df[(year_df[DATE_COLUMN] >= train_date) & (year_df[DATE_COLUMN] < test_date)]
     test_df = year_df[(year_df[DATE_COLUMN] >= test_date)]
     
-    train = generate_train_data(train_df, start_date=train_date, end_date=val_date, window=window_size ,data_type=data_type)
-    val = generate_train_data(val_df, start_date=val_date, end_date=test_date, window=window_size, data_type=data_type)
-    test = generate_test_data(test_df, start_date=test_date, end_date=end_date, window=window_size, data_type=data_type)
+    train = generate_train_data(train_df, start_date=train_date, end_date=test_date, window=window_size ,data_type=data_type, use_embedding=use_embedding)
+    test = generate_test_data(test_df, start_date=test_date, end_date=end_date, window=window_size, data_type=data_type, use_embedding=use_embedding)
     
     if not os.path.exists(save_path):
         os.mkdir(save_path)
 
     np.savez(f'{save_path}/train.npz', **train)
-    np.savez(f'{save_path}/val.npz', **val)
 
 
     for month in test:
@@ -254,7 +278,7 @@ def generate_area_data(year_df: pd.DataFrame, year: int, save_path: str, window_
 
         np.savez(f'{save_path}/test/{month}.npz', **test_month_data)
 
-def generate_crime_data(year_df: pd.DataFrame, year: int, save_path: str, window_size: int=5, data_type: str='regular') -> None:
+def generate_crime_data(year_df: pd.DataFrame, year: int, save_path: str, window_size: int=5, data_type: str='regular', use_embedding=False) -> None:
     """
     Generates data for all crimes in the new york dataset.
 
@@ -274,7 +298,16 @@ def generate_crime_data(year_df: pd.DataFrame, year: int, save_path: str, window
 
     data_type: str
         String representing the type of data to generate.
+
+    use_embedding: bool
+        If to incorporate embeddings in the data.
     """
+    
+    selected_crimes = crime_types[crime_types['OFNS_DESC'].isin(['ROBBERY',
+                                           'BURGLARY',
+                                           'FELONY ASSAULT',
+                                           'GRAND LARCENY',])]['KY_CD'].tolist()
+    
     for crime in tqdm(selected_crimes, leave=False):
         crime_df = year_df[year_df[OFFENCE_CODE] == crime]
         crime_type = crime_types[crime_types[OFFENCE_CODE] == crime][OFFENCE_DESC].iloc[0].replace('/', '_')
@@ -283,11 +316,11 @@ def generate_crime_data(year_df: pd.DataFrame, year: int, save_path: str, window
             if not os.path.exists(crime_path):
                 os.mkdir(crime_path)
 
-            generate_area_data(crime_df, year, crime_path, window_size, data_type)
+            generate_area_data(crime_df, year, crime_path, window_size, data_type, use_embedding)
         except ValueError:
             print(f'failed at {crime_type}')
 
-def generate_year_data(df: pd.DataFrame, save_path: str, window_size: int=5, data_type: str='regular'):
+def generate_year_data(df: pd.DataFrame, save_path: str, window_size: int=5, data_type: str='regular', use_embedding: bool=False):
     """
     Generates data for a specific crime for all years in a range.
 
@@ -304,6 +337,9 @@ def generate_year_data(df: pd.DataFrame, save_path: str, window_size: int=5, dat
 
     data_type: str
         String representing the type of data to generate.
+
+    use_embedding: bool
+        If to incorporate embeddings in the data.
     """
     for year in tqdm(range(2014, 2016), leave=False):   
         START_DATE = dateutil.parser.parse(f'1/1/{year}').date()
@@ -314,12 +350,15 @@ def generate_year_data(df: pd.DataFrame, save_path: str, window_size: int=5, dat
         if not os.path.exists(year_path):
                 os.mkdir(year_path)
 
-        generate_crime_data(year_df, year, year_path, window_size, data_type)
+        generate_crime_data(year_df, year, year_path, window_size, data_type, use_embedding)
 
 def main():
+
+    global embedding_dict
+
     parser = arg_parse()
 
-    df = pd.read_csv(parser.load_path, usecols=LOAD_COLUMNS, nrows=1000)
+    df = pd.read_csv(parser.load_path, usecols=LOAD_COLUMNS)
     df = df[df[AREA_COLUMN] != -99.0]
 
     df[DATE_COLUMN] = df[DATE_COLUMN].progress_apply(lambda date: date_from_str(date))
@@ -329,7 +368,21 @@ def main():
 
     df = df.sort_values(DATE_COLUMN)
 
-    generate_year_data(df, f'{parser.save_path}/{parser.data_type}', parser.window_size, parser.data_type)
+    if parser.use_embedding:
+        path = f'{parser.save_path}/embedding/'
+        with open('../data/jsons/newyork_borough_emb.json', 'r') as f:
+            embedding_dict = json.load(f)
+    else: 
+        path = f'{parser.save_path}/historic/'
+    if not os.path.exists(path):
+        os.mkdir(path)
+    
+    path = f'{path}/{parser.data_type}'
+
+    if not os.path.exists(path):
+        os.mkdir(path)
+    
+    generate_year_data(df, path, parser.window_size, parser.data_type, parser.use_embedding)
 
 if __name__ == "__main__":
     main()
