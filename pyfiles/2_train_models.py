@@ -156,6 +156,7 @@ def main():
         g = sns.FacetGrid(df, col="crime", height=5, aspect=.8)
         ax = g.map_dataframe(sns.barplot, x="month", y=metric, hue="data_type", palette=sns.color_palette("tab10"))
         plt.subplots_adjust(top=0.8)
+        g.add_legend()
         g.fig.suptitle(f'Year: {parser.year}')
         ax.savefig(f"{parser.save_path}/{parser.model}_{parser.window_size}_{metric}_{str(datetime.now())}.png")
 
