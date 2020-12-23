@@ -88,6 +88,7 @@ def train_model(model_type: str,
     if model_type == 'xgboost':
         model = XGBClassifier(n_estimators=200, objective='binary:logistic',
                               n_jobs=-1,
+                              scale_pos_weight=weight_ratio,
                               eval_metric='logloss')
 
         model.fit(x, y)
@@ -111,7 +112,7 @@ def train_model(model_type: str,
         model = CrimeModel(32)
         model.compile(optimizer='adam', loss='binary_crossentropy', metrics=[tf.keras.metrics.Precision(), tf.keras.metrics.Recall(), tf.keras.metrics.AUC()])
 
-        model.fit(x, y, epochs=5, batch_size=64, verbose=0)
+        model.fit(x, y, epochs=5, batch_size=64, verbose=0, class_weight={0: 1, 1: weight_ratio})
         
         for month in test:
             x_test, y_test = test[month]['x'], test[month]['y']

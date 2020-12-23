@@ -22,13 +22,9 @@ CB = 'BORO_NM'
 LOAD_COLUMNS = [AREA_COLUMN, DATE_COLUMN, OFFENCE_CODE, OFFENCE_DESC, CB]
 LOWEST_DATE = dateutil.parser.parse('1/1/2000').date()
 
-crime_types = pd.read_csv('../data/csvs/Crime_Types.csv')
-crime_types = crime_types[~crime_types[OFFENCE_DESC].isnull()]
+crime_types = None
 
-selected_crimes = crime_types[crime_types['OFNS_DESC'].isin(['ROBBERY',
-                                           'BURGLARY',
-                                           'FELONY ASSAULT',
-                                           'GRAND LARCENY',])]['KY_CD'].tolist()
+
 
 
 embedding_dict = None
@@ -36,6 +32,7 @@ embedding_dict = None
 def arg_parse():
     parser = argparse.ArgumentParser()
     parser.add_argument('--load_path', type=str, help='Path of the dataset to load.')
+    parser.add_argument('--crime_code_path', type=str, help='Path of the crime code to load.')
     parser.add_argument('--save_path', type=str, help='Path to save the npy files.')
     parser.add_argument('--window_size', type=int, default=5, help='Size of the window.')
     parser.add_argument('--data_type', type=str, choices=['time_series', 'regular'], help='Type of the training data to generate.')
@@ -303,6 +300,11 @@ def generate_crime_data(year_df: pd.DataFrame, year: int, save_path: str, window
         If to incorporate embeddings in the data.
     """
     
+    selected_crimes = crime_types[crime_types['OFNS_DESC'].isin(['ROBBERY',
+                                           'BURGLARY',
+                                           'FELONY ASSAULT',
+                                           'GRAND LARCENY',])]['KY_CD'].tolist()
+
     for crime in tqdm(selected_crimes, leave=False):
         crime_df = year_df[year_df[OFFENCE_CODE] == crime]
         crime_type = crime_types[crime_types[OFFENCE_CODE] == crime][OFFENCE_DESC].iloc[0].replace('/', '_')
@@ -349,9 +351,12 @@ def generate_year_data(df: pd.DataFrame, save_path: str, window_size: int=5, dat
 
 def main():
 
-    global embedding_dict
+    global embedding_dict, crime_types
 
     parser = arg_parse()
+
+    crime_types = pd.read_csv(parser.crime_code_path)
+    crime_types = crime_types[~crime_types[OFFENCE_DESC].isnull()]
 
     df = pd.read_csv(parser.load_path, usecols=LOAD_COLUMNS)
     df = df[df[AREA_COLUMN] != -99.0]
