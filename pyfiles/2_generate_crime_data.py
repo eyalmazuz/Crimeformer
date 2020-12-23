@@ -34,7 +34,11 @@ def arg_parse():
     parser.add_argument('--load_path', type=str, help='Path of the dataset to load.')
     parser.add_argument('--crime_code_path', type=str, help='Path of the crime code to load.')
     parser.add_argument('--save_path', type=str, help='Path to save the npy files.')
-    parser.add_argument('--window_size', type=int, default=5, help='Size of the window.')   
+    parser.add_argument('--window_size', type=int, default=5, help='Size of the window.') 
+    parser.add_argument('--embeeding_path', type=str, default='../data/jsons/newyork_borough_emb.json', help='Path to the embedding class.')   
+    parser.add_argument('--start_year', type=int, default=2014, help='The Year to start generate data for.')   
+    parser.add_argument('--end_year', type=int, default=2014, help='The Year to end generate data for.')   
+
 
     return parser.parse_args()
 
@@ -314,7 +318,9 @@ def generate_crime_data(year_df: pd.DataFrame, year: int, save_path: str, window
         except ValueError:
             print(f'failed at {crime_type}')
 
-def generate_year_data(df: pd.DataFrame, save_path: str, window_size: int=5, data_type: str='regular', use_embedding: bool=False):
+def generate_year_data(df: pd.DataFrame, save_path: str, window_size: int=5,
+                        data_type: str='regular', use_embedding: bool=False,
+                        start_year: int=2014, end_year: int=2015):
     """
     Generates data for a specific crime for all years in a range.
 
@@ -334,8 +340,14 @@ def generate_year_data(df: pd.DataFrame, save_path: str, window_size: int=5, dat
 
     use_embedding: bool
         If to incorporate embeddings in the data.
+
+    start_year: int
+        The Year to start generate data for.
+
+    end_year: int
+        The Year to end the data generation for.
     """
-    for year in tqdm(range(2014, 2016), leave=False):   
+    for year in tqdm(range(start_year, end_year), leave=False):   
         START_DATE = dateutil.parser.parse(f'1/1/{year}').date()
         END_DATE = dateutil.parser.parse(f'1/1/{year + 1}').date()
         year_df = df[(df[DATE_COLUMN] > START_DATE) & (df[DATE_COLUMN] < END_DATE)]
@@ -374,7 +386,7 @@ def main():
             
             if use_embedding:
                 path = f'{path}/embedding/'
-                with open('../data/jsons/newyork_borough_emb.json', 'r') as f:
+                with open(parser.embeeding_path, 'r') as f:
                     embedding_dict = json.load(f)
             else: 
                 path = f'{path}/historic/'
@@ -387,7 +399,7 @@ def main():
             if not os.path.exists(path):
                 os.mkdir(path)
             
-            generate_year_data(df, path, parser.window_size, data_type, use_embedding)
+            generate_year_data(df, path, parser.window_size, data_type, use_embedding, parser.start_year, parser.end_year)
 
 if __name__ == "__main__":
     main()
