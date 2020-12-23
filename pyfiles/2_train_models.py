@@ -160,7 +160,7 @@ def main():
             plt.subplots_adjust(top=0.8)
             g.add_legend()
             g.fig.suptitle(f'Year: {parser.year}')
-            ax.savefig(f"{parser.save_path}/{model}_{parser.window_size}_{metric}_{str(datetime.now())}.png")
+            ax.savefig(f"{parser.save_path}/{str(datetime.now())}_model_{model}_year_{parser.year}_window_{parser.window_size}_metric_{metric}.png")
 
 
 if __name__ == "__main__":
