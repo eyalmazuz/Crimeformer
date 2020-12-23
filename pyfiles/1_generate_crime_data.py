@@ -127,7 +127,7 @@ def generate_test_data(df: pd.DataFrame, start_date, end_date, window=5, data_ty
             month_df = area_crime_df[area_crime_df['month'] == month]
             x = []
             y = []
-            for i in range(window, area_crime_df.shape[0]):
+            for i in range(window, month_df.shape[0]):
                 if data_type == 'regular':
                     instance = np.array(month_df[i - window : i][columns].tolist() + month_df['area'].unique().tolist())
                     if use_embedding:
@@ -137,7 +137,7 @@ def generate_test_data(df: pd.DataFrame, start_date, end_date, window=5, data_ty
                     if use_embedding:
                         embs = np.array([embedding_dict[borough]] * window)
                         instance = np.hstack([instance, embs]) 
-                        
+
                 x.append(instance)
                 y.append(month_df.iloc[i]['has_crime'])
 
@@ -150,7 +150,7 @@ def generate_test_data(df: pd.DataFrame, start_date, end_date, window=5, data_ty
 
     return data
 
-def generate_train_data(df: pd.DataFrame, start_date, end_date, window=5, data_type='regular', use_embedding: bool=True) -> Data:
+def generate_train_data(df: pd.DataFrame, start_date, end_date, window=5, data_type='regular', use_embedding: bool=False) -> Data:
     """
     Generates trainning data for each month in the test set.
     Each month contains all the training data for all precints.
@@ -363,12 +363,18 @@ def main():
 
     df = df.sort_values(DATE_COLUMN)
 
+    path = f'{parser.save_path}/{str(parser.window_size)}'
+
+    if not os.path.exists(path):
+        os.mkdir(path)
+    
     if parser.use_embedding:
-        path = f'{parser.save_path}/embedding/'
+        path = f'{path}/embedding/'
         with open('../data/jsons/newyork_borough_emb.json', 'r') as f:
             embedding_dict = json.load(f)
     else: 
-        path = f'{parser.save_path}/historic/'
+        path = f'{path}/historic/'
+
     if not os.path.exists(path):
         os.mkdir(path)
     

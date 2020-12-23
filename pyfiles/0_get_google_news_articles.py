@@ -105,10 +105,10 @@ def get_articles(city_locations: Dict[str, List[str]], city: str, save_path: str
         Inital save path for the articles.
     """
     
-    for area, neighborhoods in (t1 := tqdm(city_locations.items(), leave=False)):
+    for area, neighborhoods in tqdm(city_locations.items(), leave=False):
         t1.set_description(area)
         
-        for neighborhood in (t2 := tqdm(neighborhoods, leave=False)):
+        for neighborhood in tqdm(neighborhoods, leave=False):
             t2.set_description(neighborhood)
             path = os.path.join(save_path, city, area, neighborhood)
             if not os.path.exists(path):
