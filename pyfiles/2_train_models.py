@@ -159,7 +159,7 @@ def main():
             ax = g.map_dataframe(sns.barplot, x="month", y=metric, hue="data_type", palette=sns.color_palette("tab10"))
             plt.subplots_adjust(top=0.8)
             g.add_legend()
-            g.fig.suptitle(f'Year: {parser.year}')
+            g.fig.suptitle(f'Model: {model} Year: {parser.year}')
             ax.savefig(f"{parser.save_path}/{str(datetime.now())}_model_{model}_year_{parser.year}_window_{parser.window_size}_metric_{metric}.png")
 
 
