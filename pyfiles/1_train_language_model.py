@@ -12,6 +12,7 @@ import torch
 
 from tqdm import tqdm, trange
 from sklearn.preprocessing import LabelEncoder
+from sklearn.decomposition import PCA
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, AdamW
 
 webhook_url = 'URL'
@@ -223,6 +224,11 @@ def main():
         output = model(**encodings)
         emb_dict[neighb] = list(output.hidden_states[-1][0][0].detach().numpy().astype(np.float64))
     
+    x_rec = PCA(train_data['labels'].nunique()).fit_transform(list(emb_dict.values()))
+
+    for key, vector in zip(emb_dict, x_rec):
+        emb_dict[key] = vector.tolist()
+
     with open('./newyork_borough_emb.json', 'w') as f:
         json.dump(emb_dict, f)
 

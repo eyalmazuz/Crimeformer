@@ -35,9 +35,9 @@ def arg_parse():
     parser.add_argument('--crime_code_path', type=str, help='Path of the crime code to load.')
     parser.add_argument('--save_path', type=str, help='Path to save the npy files.')
     parser.add_argument('--window_size', type=int, default=5, help='Size of the window.') 
-    parser.add_argument('--embeeding_path', type=str, default='../data/jsons/newyork_borough_emb.json', help='Path to the embedding class.')   
+    parser.add_argument('--embedding_path', type=str, default='../data/jsons/newyork_borough_emb.json', help='Path to the embedding class.')   
     parser.add_argument('--start_year', type=int, default=2014, help='The Year to start generate data for.')   
-    parser.add_argument('--end_year', type=int, default=2014, help='The Year to end generate data for.')   
+    parser.add_argument('--end_year', type=int, default=2016, help='The Year to end generate data for.')   
 
 
     return parser.parse_args()
@@ -386,7 +386,7 @@ def main():
             
             if use_embedding:
                 path = f'{path}/embedding/'
-                with open(parser.embeeding_path, 'r') as f:
+                with open(parser.embedding_path, 'r') as f:
                     embedding_dict = json.load(f)
             else: 
                 path = f'{path}/historic/'

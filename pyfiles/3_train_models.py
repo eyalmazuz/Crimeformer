@@ -72,8 +72,7 @@ def train_model(model_type: str,
                 train: np.lib.npyio.NpzFile,
                 test: np.lib.npyio.NpzFile,
                 crime: str,
-                data_type: str,
-                test_size: float=0.2) -> None:
+                data_type: str) -> None:
 
     x, y = train['x'], train['y']
     
@@ -150,7 +149,7 @@ def main():
             for crime in tqdm(os.listdir(path), leave=False):
                 crime_path = f'{path}/{crime}'
                 train, tests = load_data(crime_path)
-                results = train_model(model, train, tests, crime, data_type, parser.test_size)
+                results = train_model(model, train, tests, crime, data_type)
                 df = df.append(results)
         
         for metric in ['auc', 'f1']:
