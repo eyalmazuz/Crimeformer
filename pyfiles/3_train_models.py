@@ -35,7 +35,7 @@ def arg_parse():
     parser.add_argument('--load_path', type=str, help='Path of the dataset to load.')
     parser.add_argument('--save_path', type=str, help='Path to save the results.')
     parser.add_argument('--window_size', type=int, default=10, help='The size of the window to use for experiments.')
-    parser.add_argument('--year', type=int, choices=[2014, 2015], help='Year of the data to use.')
+    parser.add_argument('--year', type=int, help='Year of the data to use.')
 
 
     return parser.parse_args()
