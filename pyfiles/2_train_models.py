@@ -1,5 +1,6 @@
 import argparse
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 from typing import Dict, List, Tuple, Union
 from datetime import datetime
 
@@ -24,7 +25,6 @@ if gpus:
     for gpu in gpus:
       tf.config.experimental.set_memory_growth(gpu, True)
     logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-    print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
   except RuntimeError as e:
     # Memory growth must be set before GPUs have been initialized
     print(e)
@@ -136,29 +136,31 @@ def main():
 
     parser = arg_parse()
 
-    df = pd.DataFrame({'crime': [],'model': [], 'month': [],'f1': [], 'auc': []})
+    for model in tqdm(['tensorflow', 'xgboost']):
 
-    for data_type in tqdm(['historic', 'embedding']):
-        
-        if parser.model == 'xgboost':
-            path = f'{parser.load_path}/{parser.window_size}/{data_type}/regular/{parser.year}'
+        df = pd.DataFrame({'crime': [],'model': [], 'month': [],'f1': [], 'auc': []})
 
-        elif parser.model == 'tensorflow':
-            path = f'{parser.load_path}/{parser.window_size}/{data_type}/time_series/{parser.year}'
+        for data_type in tqdm(['historic', 'embedding'], leave=False):
+            
+            if model == 'xgboost':
+                path = f'{parser.load_path}/{parser.window_size}/{data_type}/regular/{parser.year}'
+
+            elif model == 'tensorflow':
+                path = f'{parser.load_path}/{parser.window_size}/{data_type}/time_series/{parser.year}'
+            
+            for crime in tqdm(os.listdir(path), leave=False):
+                crime_path = f'{path}/{crime}'
+                train, tests = load_data(crime_path)
+                results = train_model(model, train, tests, crime, data_type, parser.test_size)
+                df = df.append(results)
         
-        for crime in tqdm(os.listdir(path), leave=False):
-            crime_path = f'{path}/{crime}'
-            train, tests = load_data(crime_path)
-            results = train_model(parser.model, train, tests, crime, data_type, parser.test_size)
-            df = df.append(results)
-    
-    for metric in ['auc', 'f1']:
-        g = sns.FacetGrid(df, col="crime", height=5, aspect=.8)
-        ax = g.map_dataframe(sns.barplot, x="month", y=metric, hue="data_type", palette=sns.color_palette("tab10"))
-        plt.subplots_adjust(top=0.8)
-        g.add_legend()
-        g.fig.suptitle(f'Year: {parser.year}')
-        ax.savefig(f"{parser.save_path}/{parser.model}_{parser.window_size}_{metric}_{str(datetime.now())}.png")
+        for metric in ['auc', 'f1']:
+            g = sns.FacetGrid(df, col="crime", height=5, aspect=.8)
+            ax = g.map_dataframe(sns.barplot, x="month", y=metric, hue="data_type", palette=sns.color_palette("tab10"))
+            plt.subplots_adjust(top=0.8)
+            g.add_legend()
+            g.fig.suptitle(f'Year: {parser.year}')
+            ax.savefig(f"{parser.save_path}/{model}_{parser.window_size}_{metric}_{str(datetime.now())}.png")
 
 
 if __name__ == "__main__":

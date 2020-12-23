@@ -363,27 +363,29 @@ def main():
 
     df = df.sort_values(DATE_COLUMN)
 
-    path = f'{parser.save_path}/{str(parser.window_size)}'
+    for data_type in tqdm(['regular', 'time_series']):
+        for use_embedding in tqdm([True, False], leave=False):
+            path = f'{parser.save_path}/{str(parser.window_size)}'
 
-    if not os.path.exists(path):
-        os.mkdir(path)
-    
-    if parser.use_embedding:
-        path = f'{path}/embedding/'
-        with open('../data/jsons/newyork_borough_emb.json', 'r') as f:
-            embedding_dict = json.load(f)
-    else: 
-        path = f'{path}/historic/'
+            if not os.path.exists(path):
+                os.mkdir(path)
+            
+            if use_embedding:
+                path = f'{path}/embedding/'
+                with open('../data/jsons/newyork_borough_emb.json', 'r') as f:
+                    embedding_dict = json.load(f)
+            else: 
+                path = f'{path}/historic/'
 
-    if not os.path.exists(path):
-        os.mkdir(path)
-    
-    path = f'{path}/{parser.data_type}'
+            if not os.path.exists(path):
+                os.mkdir(path)
+            
+            path = f'{path}/{data_type}'
 
-    if not os.path.exists(path):
-        os.mkdir(path)
-    
-    generate_year_data(df, path, parser.window_size, parser.data_type, parser.use_embedding)
+            if not os.path.exists(path):
+                os.mkdir(path)
+            
+            generate_year_data(df, path, parser.window_size, data_type, use_embedding)
 
 if __name__ == "__main__":
     main()
