@@ -210,5 +210,21 @@ def main():
     print('Training the Model')
     train_model(df=train_data, tokenizer=tokenizer, model=model, steps=steps, batch_size=parser.batch_size, save_path=parser.save_path)
 
+    tokenizer = AutoTokenizer.from_pretrained(parser.model)
+    model = AutoModelForSequenceClassification.from_pretrained(parser.save_path,
+                                                               return_dict=True,)
+    NER_tokens = ['Event', 'Law', 'Food', 'Money', 'Health', 'Education']
+
+    neighborhoods = [s.lower() for s in train_data['labels'].unique()]
+    emb_dict = {}
+    for neighb in tqdm(neighborhoods):
+        x = ' '.join([neighb] + NER_tokens)
+        encodings = tokenizer([x], return_tensors='pt')
+        output = model(**encodings)
+        emb_dict[neighb] = list(output.hidden_states[-1][0][0].detach().numpy().astype(np.float64))
+    
+    with open('./newyork_borough_emb.json', 'w') as f:
+        json.dump(emb_dict, f)
+
 if __name__ == "__main__":
     main()

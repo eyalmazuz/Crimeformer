@@ -36,8 +36,6 @@ def arg_parse():
     parser.add_argument('--save_path', type=str, help='Path to save the results.')
     parser.add_argument('--window_size', type=int, default=10, help='The size of the window to use for experiments.')
     parser.add_argument('--year', type=int, choices=[2014, 2015], help='Year of the data to use.')
-    parser.add_argument('--model', type=str, help='Models to train choices are xgboost or tensorflow LSTM.')
-    parser.add_argument('--test_size', type=float, default=0.2, help='Amount of the to give the test set. Ranges between 0.01-0.99 .')
 
 
     return parser.parse_args()

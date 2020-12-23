@@ -34,10 +34,7 @@ def arg_parse():
     parser.add_argument('--load_path', type=str, help='Path of the dataset to load.')
     parser.add_argument('--crime_code_path', type=str, help='Path of the crime code to load.')
     parser.add_argument('--save_path', type=str, help='Path to save the npy files.')
-    parser.add_argument('--window_size', type=int, default=5, help='Size of the window.')
-    parser.add_argument('--data_type', type=str, choices=['time_series', 'regular'], help='Type of the training data to generate.')
-    parser.add_argument('--use_embedding', type=bool, choices=[True, False], help='If to including embedding in the data.')
-    
+    parser.add_argument('--window_size', type=int, default=5, help='Size of the window.')   
 
     return parser.parse_args()
 
