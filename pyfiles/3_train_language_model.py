@@ -14,7 +14,7 @@ from tqdm import tqdm, trange
 from sklearn.preprocessing import LabelEncoder
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, AdamW
 
-webhook_url = 'https://discordapp.com/api/webhooks/759743974671384608/wl_A7P2ap8DUBB-0OjHD_HxFeblPE95asDilHrZXCWK3UuxIzBkXHWmhRTIuYJex4s8r'
+webhook_url = 'URL'
 
 def send_message(text: str):
     headers = {'Content-Type': 'application/json'}
